@@ -21,18 +21,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <main className="login-shell">
       <section className="login-card">
         <p className="login-eyebrow">jsearch</p>
-        <h1>Private Job Dashboard</h1>
+        <h1>Privat jobböversikt</h1>
         <p className="login-copy">
-          Sign in with your personal password to access your Arbetsformedlingen
-          job search view.
+          Logga in med ditt personliga lösenord för att komma till din
+          jobbsökningsvy för Arbetsförmedlingen.
         </p>
 
         {hasError ? (
-          <p className="login-error">Wrong password. Try again.</p>
+          <p className="login-error">Fel lösenord. Försök igen.</p>
         ) : null}
 
         <form method="POST" action="/api/auth/login" className="login-form">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">Lösenord</label>
           <input
             id="password"
             name="password"
@@ -40,7 +40,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             required
             autoComplete="current-password"
           />
-          <button type="submit">Sign In</button>
+          <button type="submit">Logga in</button>
         </form>
       </section>
     </main>

@@ -28,7 +28,7 @@ function one(value: string | string[] | undefined): string {
 
 function formatDate(date: Date | null): string {
   if (!date) {
-    return "Unknown";
+    return "Okänd";
   }
 
   return new Intl.DateTimeFormat("sv-SE", {
@@ -92,45 +92,45 @@ export default async function Home({ searchParams }: HomeProps) {
       <section className="dashboard-hero">
         <div>
           <p className="hero-kicker">jsearch</p>
-          <h1>Your Arbetsformedlingen Filter Layer</h1>
+          <h1>Din filtervy för Arbetsförmedlingen</h1>
           <p>
-            Personal, focused, and private. Search jobs with your own layout and
-            sync from the official source automatically.
+            Personlig, fokuserad och privat. Sök jobb i din egen layout och
+            synka automatiskt från officiell källa.
           </p>
         </div>
         <div className="hero-actions">
           <form method="POST" action="/api/jobs/sync">
-            <button type="submit">Sync Now</button>
+            <button type="submit">Synka nu</button>
           </form>
           <form method="POST" action="/api/auth/logout">
             <button type="submit" className="button-secondary">
-              Logout
+              Logga ut
             </button>
           </form>
         </div>
       </section>
 
       {synced ? (
-        <p className="notice success">Sync complete. Upserted {upserted || "0"} jobs.</p>
+        <p className="notice success">Synk klar. Uppdaterade {upserted || "0"} jobb.</p>
       ) : null}
 
       {syncError ? (
         <p className="notice error">
-          Sync failed. {syncMessage ? `Details: ${syncMessage}` : "Check server logs."}
+          Synk misslyckades. {syncMessage ? `Detaljer: ${syncMessage}` : "Kontrollera serverloggar."}
         </p>
       ) : null}
 
       <section className="stats-bar">
         <p>
-          <strong>{total}</strong> matching jobs
+          <strong>{total}</strong> matchande jobb
         </p>
-        <p>Latest update: {formatDate(latestUpdate?.updatedAt ?? null)}</p>
+        <p>Senast uppdaterad: {formatDate(latestUpdate?.updatedAt ?? null)}</p>
       </section>
 
       <section className="filters-card">
         <form className="filters-grid" method="GET">
           <label>
-            Search text
+            Söktext
             <input name="q" defaultValue={q} placeholder="python, frontend, data" />
           </label>
           <label>
@@ -138,35 +138,35 @@ export default async function Home({ searchParams }: HomeProps) {
             <input name="region" defaultValue={region} placeholder="Stockholm" />
           </label>
           <label>
-            Company
+            Företag
             <input name="company" defaultValue={company} placeholder="Volvo" />
           </label>
-          <button type="submit">Apply Filters</button>
+          <button type="submit">Filtrera</button>
         </form>
       </section>
 
       <section className="jobs-list">
         {jobs.length === 0 ? (
           <article className="job-card empty">
-            <h2>No jobs match your filter</h2>
-            <p>Try widening your search terms or run a fresh sync.</p>
+            <h2>Inga jobb matchar ditt filter</h2>
+            <p>Testa bredare sökord eller kör en ny synk.</p>
           </article>
         ) : (
           jobs.map((job) => (
             <article key={job.id} className="job-card">
               <header>
-                <p className="chip">{job.occupation ?? "Role"}</p>
-                <p>{job.region ?? "Region unknown"}</p>
+                <p className="chip">{job.occupation ?? "Roll"}</p>
+                <p>{job.region ?? "Okänd region"}</p>
               </header>
               <h2>{job.title}</h2>
               <p className="company">{job.company}</p>
               <p className="meta">
-                Published: {formatDate(job.publishedAt)} | Last day: {formatDate(job.lastPublicationAt)}
+                Publicerad: {formatDate(job.publishedAt)} | Sista dag: {formatDate(job.lastPublicationAt)}
               </p>
-              <p className="description">{job.description?.slice(0, 420) ?? "No description available."}</p>
+              <p className="description">{job.description?.slice(0, 420) ?? "Ingen beskrivning tillgänglig."}</p>
               {job.applyUrl ? (
                 <a href={job.applyUrl} target="_blank" rel="noopener noreferrer">
-                  Open listing
+                  Öppna annons
                 </a>
               ) : null}
             </article>
