@@ -45,6 +45,28 @@ Optional sync tuning:
 - `AF_SEARCH_QUERY` (default: `utvecklare`)
 - `AF_SYNC_LIMIT` (default: `100`, max `200`)
 
+Optional ingestion filters (all comma-separated, case-insensitive):
+
+- `AF_FILTER_REGION_INCLUDE`
+- `AF_FILTER_REGION_EXCLUDE`
+- `AF_FILTER_CITY_INCLUDE`
+- `AF_FILTER_COMPANY_INCLUDE`
+- `AF_FILTER_COMPANY_EXCLUDE`
+- `AF_FILTER_OCCUPATION_INCLUDE`
+- `AF_FILTER_TITLE_INCLUDE`
+- `AF_FILTER_TITLE_EXCLUDE`
+- `AF_FILTER_PUBLISHED_WITHIN_DAYS` (integer)
+
+Example:
+
+```bash
+AF_SEARCH_QUERY="utvecklare"
+AF_FILTER_REGION_INCLUDE="Stockholms län,Skåne län"
+AF_FILTER_TITLE_INCLUDE="frontend,react,typescript"
+AF_FILTER_COMPANY_EXCLUDE="bemanning,konsultpool"
+AF_FILTER_PUBLISHED_WITHIN_DAYS="14"
+```
+
 ## 3) Prepare Prisma
 
 ```bash

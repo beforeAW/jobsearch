@@ -43,8 +43,25 @@ export type SyncResult = {
   fetched: number;
   upserted: number;
   skipped: number;
+  filteredOut: number;
   query: string;
   limit: number;
+};
+
+type SyncFilters = {
+  includeRegions: string[];
+  excludeRegions: string[];
+  includeCities: string[];
+  includeCompanies: string[];
+  excludeCompanies: string[];
+  includeOccupations: string[];
+  includeTitleKeywords: string[];
+  excludeTitleKeywords: string[];
+  publishedWithinDays: number | null;
+};
+
+type JobUpsertClient = {
+  upsert: (args: unknown) => Promise<unknown>;
 };
 
 function parseDate(value: string | null | undefined): Date | null {
@@ -74,10 +91,118 @@ function buildLocation(city: string | null, municipality: string | null, region:
   return Array.from(new Set(parts)).join(", ");
 }
 
+function parseList(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter((part) => part.length > 0);
+}
+
+function parseNonNegativeInt(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function includesAny(text: string, terms: string[]): boolean {
+  const haystack = text.toLowerCase();
+  return terms.some((term) => haystack.includes(term));
+}
+
+function loadSyncFilters(): SyncFilters {
+  return {
+    includeRegions: parseList(process.env.AF_FILTER_REGION_INCLUDE),
+    excludeRegions: parseList(process.env.AF_FILTER_REGION_EXCLUDE),
+    includeCities: parseList(process.env.AF_FILTER_CITY_INCLUDE),
+    includeCompanies: parseList(process.env.AF_FILTER_COMPANY_INCLUDE),
+    excludeCompanies: parseList(process.env.AF_FILTER_COMPANY_EXCLUDE),
+    includeOccupations: parseList(process.env.AF_FILTER_OCCUPATION_INCLUDE),
+    includeTitleKeywords: parseList(process.env.AF_FILTER_TITLE_INCLUDE),
+    excludeTitleKeywords: parseList(process.env.AF_FILTER_TITLE_EXCLUDE),
+    publishedWithinDays: parseNonNegativeInt(process.env.AF_FILTER_PUBLISHED_WITHIN_DAYS),
+  };
+}
+
+function shouldIncludeHit(input: {
+  title: string;
+  company: string;
+  city: string | null;
+  region: string | null;
+  occupation: string | null;
+  publishedAt: Date | null;
+  filters: SyncFilters;
+}): boolean {
+  const { title, company, city, region, occupation, publishedAt, filters } = input;
+
+  const regionText = (region ?? "").toLowerCase();
+  const cityText = (city ?? "").toLowerCase();
+  const companyText = company.toLowerCase();
+  const occupationText = (occupation ?? "").toLowerCase();
+
+  if (filters.includeRegions.length > 0 && !includesAny(regionText, filters.includeRegions)) {
+    return false;
+  }
+
+  if (filters.excludeRegions.length > 0 && includesAny(regionText, filters.excludeRegions)) {
+    return false;
+  }
+
+  if (filters.includeCities.length > 0 && !includesAny(cityText, filters.includeCities)) {
+    return false;
+  }
+
+  if (filters.includeCompanies.length > 0 && !includesAny(companyText, filters.includeCompanies)) {
+    return false;
+  }
+
+  if (filters.excludeCompanies.length > 0 && includesAny(companyText, filters.excludeCompanies)) {
+    return false;
+  }
+
+  if (filters.includeOccupations.length > 0 && !includesAny(occupationText, filters.includeOccupations)) {
+    return false;
+  }
+
+  if (filters.includeTitleKeywords.length > 0 && !includesAny(title, filters.includeTitleKeywords)) {
+    return false;
+  }
+
+  if (filters.excludeTitleKeywords.length > 0 && includesAny(title, filters.excludeTitleKeywords)) {
+    return false;
+  }
+
+  if (filters.publishedWithinDays !== null) {
+    if (!publishedAt) {
+      return false;
+    }
+
+    const maxAgeMs = filters.publishedWithinDays * 24 * 60 * 60 * 1000;
+    const ageMs = Date.now() - publishedAt.getTime();
+
+    if (ageMs > maxAgeMs) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export async function syncArbetsformedlingenJobs(): Promise<SyncResult> {
   const query = process.env.AF_SEARCH_QUERY ?? "utvecklare";
   const limitRaw = process.env.AF_SYNC_LIMIT ?? "100";
   const limit = Math.max(1, Math.min(200, Number.parseInt(limitRaw, 10) || 100));
+  const filters = loadSyncFilters();
 
   const url = new URL(API_BASE_URL);
   url.searchParams.set("q", query);
@@ -100,6 +225,8 @@ export async function syncArbetsformedlingenJobs(): Promise<SyncResult> {
 
   let upserted = 0;
   let skipped = 0;
+  let filteredOut = 0;
+  const jobClient = prisma.job as unknown as JobUpsertClient;
 
   for (const hit of hits) {
     const sourceId = typeof hit.id === "number" ? String(hit.id) : hit.id?.trim();
@@ -115,6 +242,23 @@ export async function syncArbetsformedlingenJobs(): Promise<SyncResult> {
     const region = firstNonEmpty(hit.workplace_address?.region);
     const company =
       firstNonEmpty(hit.employer?.name, hit.employer?.workplace) ?? "Unknown employer";
+    const occupation = firstNonEmpty(hit.occupation?.label);
+    const publishedAt = parseDate(hit.publication_date);
+
+    const allowedByFilters = shouldIncludeHit({
+      title,
+      company,
+      city,
+      region,
+      occupation,
+      publishedAt,
+      filters,
+    });
+
+    if (!allowedByFilters) {
+      filteredOut += 1;
+      continue;
+    }
 
     const jobData = {
       source: "arbetsformedlingen",
@@ -127,13 +271,13 @@ export async function syncArbetsformedlingenJobs(): Promise<SyncResult> {
       applyUrl: firstNonEmpty(hit.webpage_url),
       employmentType: firstNonEmpty(hit.employment_type?.label),
       workHoursType: firstNonEmpty(hit.working_hours_type?.label),
-      occupation: firstNonEmpty(hit.occupation?.label),
-      publishedAt: parseDate(hit.publication_date),
+      occupation,
+      publishedAt,
       lastPublicationAt: parseDate(hit.last_publication_date),
       isRemoved: false,
     };
 
-    await prisma.job.upsert({
+    await jobClient.upsert({
       where: { sourceId },
       create: {
         sourceId,
@@ -149,6 +293,7 @@ export async function syncArbetsformedlingenJobs(): Promise<SyncResult> {
     fetched: hits.length,
     upserted,
     skipped,
+    filteredOut,
     query,
     limit,
   };

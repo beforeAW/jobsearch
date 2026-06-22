@@ -1,8 +1,25 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+type JobRow = {
+  id: string;
+  title: string;
+  company: string;
+  description: string | null;
+  applyUrl: string | null;
+  occupation: string | null;
+  region: string | null;
+  publishedAt: Date | null;
+  lastPublicationAt: Date | null;
+};
+
+type JobClient = {
+  findMany: (args: unknown) => Promise<JobRow[]>;
+  count: (args: unknown) => Promise<number>;
+  findFirst: (args: unknown) => Promise<{ updatedAt: Date } | null>;
 };
 
 function one(value: string | string[] | undefined): string {
@@ -30,7 +47,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const syncMessage = one(params.message);
   const upserted = one(params.upserted);
 
-  const filters: Prisma.JobWhereInput[] = [{ isRemoved: false }];
+  const filters: Array<Record<string, unknown>> = [{ isRemoved: false }];
 
   if (q) {
     filters.push({
@@ -50,21 +67,25 @@ export default async function Home({ searchParams }: HomeProps) {
     filters.push({ company: { contains: company, mode: "insensitive" } });
   }
 
-  const where: Prisma.JobWhereInput = { AND: filters };
+  const where = { AND: filters };
 
-  const [jobs, total, latestUpdate] = await prisma.$transaction([
-    prisma.job.findMany({
+  const jobClient = prisma.job as unknown as JobClient;
+
+  const [jobsRaw, total, latestUpdate] = await Promise.all([
+    jobClient.findMany({
       where,
       orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
       take: 100,
     }),
-    prisma.job.count({ where }),
-    prisma.job.findFirst({
+    jobClient.count({ where }),
+    jobClient.findFirst({
       where: { isRemoved: false },
       orderBy: { updatedAt: "desc" },
       select: { updatedAt: true },
     }),
   ]);
+
+  const jobs = jobsRaw as JobRow[];
 
   return (
     <main className="dashboard-shell">
