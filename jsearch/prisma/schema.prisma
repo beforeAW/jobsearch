@@ -9,12 +9,26 @@ datasource db {
 }
 
 model Job {
-  id          String   @id @default(cuid())
-  title       String
-  company     String
-  location    String?
-  description String?
-  applyUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  source           String   @default("arbetsformedlingen")
+  sourceId         String   @unique
+  title            String
+  company          String
+  location         String?
+  region           String?
+  city             String?
+  employmentType   String?
+  occupation       String?
+  workHoursType    String?
+  description      String?
+  applyUrl         String?
+  publishedAt      DateTime?
+  lastPublicationAt DateTime?
+  isRemoved        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([source, publishedAt])
+  @@index([company])
+  @@index([location])
 }
