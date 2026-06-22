@@ -1,26 +1,287 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #f6efe2;
+  --ink: #1f2a1f;
+  --card: #fff8eb;
+  --line: #c8ba9c;
+  --brand: #0f6b53;
+  --brand-strong: #084737;
+  --danger: #8e2a24;
+  --success: #175e41;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-heading);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 10%, #f9f2dd 0%, transparent 34%),
+    radial-gradient(circle at 90% 0%, #d4ebd9 0%, transparent 42%),
+    var(--canvas);
+  font-family: var(--font-heading), "Space Grotesk", sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.dashboard-shell {
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+.dashboard-hero {
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, #fffef7 0%, #eef7f0 100%);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+.hero-kicker {
+  display: inline-flex;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #e5f1de;
+  border: 1px solid #abc8b1;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dashboard-hero h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 2.8vw, 2.3rem);
+}
+
+.dashboard-hero p {
+  margin: 0.65rem 0 0;
+  max-width: 62ch;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+button,
+.job-card a {
+  appearance: none;
+  border: 1px solid var(--brand-strong);
+  border-radius: 0.7rem;
+  background: var(--brand);
+  color: #f9fff9;
+  padding: 0.55rem 0.95rem;
+  text-decoration: none;
+  transition: transform 140ms ease, background 140ms ease;
+}
+
+button:hover,
+.job-card a:hover {
+  transform: translateY(-1px);
+  background: var(--brand-strong);
+}
+
+.button-secondary {
+  border-color: #7b6d54;
+  background: #f6ebd1;
+  color: #332c1f;
+}
+
+.button-secondary:hover {
+  background: #ebddbe;
+}
+
+.notice {
+  margin: 1rem 0 0;
+  border-radius: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid transparent;
+}
+
+.notice.success {
+  background: #e6f5eb;
+  border-color: #9cc8ac;
+  color: var(--success);
+}
+
+.notice.error {
+  background: #f9e8e6;
+  border-color: #dcaaa5;
+  color: var(--danger);
+}
+
+.stats-bar {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  font-family: var(--font-mono), monospace;
+}
+
+.stats-bar p {
+  margin: 0;
+}
+
+.filters-card {
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.filters-grid label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+}
+
+.filters-grid input {
+  border: 1px solid #a6987c;
+  border-radius: 0.55rem;
+  background: #fffcf3;
+  padding: 0.55rem 0.65rem;
+}
+
+.jobs-list {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.job-card {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--card);
+  padding: 1rem;
+  animation: rise 360ms ease;
+}
+
+.job-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.83rem;
+  color: #4a4333;
+}
+
+.chip {
+  margin: 0;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid #ccb27e;
+  border-radius: 999px;
+  background: #f4e4c4;
+}
+
+.job-card h2 {
+  margin: 0.65rem 0 0.35rem;
+  font-size: 1.2rem;
+}
+
+.company {
+  margin: 0;
+  font-weight: 600;
+}
+
+.meta {
+  margin: 0.45rem 0;
+  font-size: 0.82rem;
+  color: #4f4a3f;
+  font-family: var(--font-mono), monospace;
+}
+
+.description {
+  margin: 0.45rem 0 0.8rem;
+  line-height: 1.45;
+}
+
+.login-shell {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.login-card {
+  width: min(540px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--card);
+  padding: 1.25rem;
+}
+
+.login-card h1 {
+  margin: 0.35rem 0 0;
+}
+
+.login-copy {
+  margin: 0.65rem 0 0;
+  max-width: 45ch;
+}
+
+.login-form {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.login-form input {
+  border: 1px solid #a6987c;
+  border-radius: 0.55rem;
+  background: #fffcf3;
+  padding: 0.55rem 0.65rem;
+}
+
+.login-error {
+  margin-top: 0.8rem;
+  color: var(--danger);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 900px) {
+  .dashboard-hero {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+@media (max-width: 860px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
 }

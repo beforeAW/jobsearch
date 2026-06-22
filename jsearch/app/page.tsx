@@ -1,65 +1,157 @@
-import Image from "next/image";
+import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
-export default function Home() {
+type HomeProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function one(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function formatDate(date: Date | null): string {
+  if (!date) {
+    return "Unknown";
+  }
+
+  return new Intl.DateTimeFormat("sv-SE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const params = await searchParams;
+  const q = one(params.q).trim();
+  const region = one(params.region).trim();
+  const company = one(params.company).trim();
+  const synced = one(params.synced) === "1";
+  const syncError = one(params.syncError) === "1";
+  const syncMessage = one(params.message);
+  const upserted = one(params.upserted);
+
+  const filters: Prisma.JobWhereInput[] = [{ isRemoved: false }];
+
+  if (q) {
+    filters.push({
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { occupation: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (region) {
+    filters.push({ region: { contains: region, mode: "insensitive" } });
+  }
+
+  if (company) {
+    filters.push({ company: { contains: company, mode: "insensitive" } });
+  }
+
+  const where: Prisma.JobWhereInput = { AND: filters };
+
+  const [jobs, total, latestUpdate] = await prisma.$transaction([
+    prisma.job.findMany({
+      where,
+      orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+      take: 100,
+    }),
+    prisma.job.count({ where }),
+    prisma.job.findFirst({
+      where: { isRemoved: false },
+      orderBy: { updatedAt: "desc" },
+      select: { updatedAt: true },
+    }),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="dashboard-shell">
+      <section className="dashboard-hero">
+        <div>
+          <p className="hero-kicker">jsearch</p>
+          <h1>Your Arbetsformedlingen Filter Layer</h1>
+          <p>
+            Personal, focused, and private. Search jobs with your own layout and
+            sync from the official source automatically.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="hero-actions">
+          <form method="POST" action="/api/jobs/sync">
+            <button type="submit">Sync Now</button>
+          </form>
+          <form method="POST" action="/api/auth/logout">
+            <button type="submit" className="button-secondary">
+              Logout
+            </button>
+          </form>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {synced ? (
+        <p className="notice success">Sync complete. Upserted {upserted || "0"} jobs.</p>
+      ) : null}
+
+      {syncError ? (
+        <p className="notice error">
+          Sync failed. {syncMessage ? `Details: ${syncMessage}` : "Check server logs."}
+        </p>
+      ) : null}
+
+      <section className="stats-bar">
+        <p>
+          <strong>{total}</strong> matching jobs
+        </p>
+        <p>Latest update: {formatDate(latestUpdate?.updatedAt ?? null)}</p>
+      </section>
+
+      <section className="filters-card">
+        <form className="filters-grid" method="GET">
+          <label>
+            Search text
+            <input name="q" defaultValue={q} placeholder="python, frontend, data" />
+          </label>
+          <label>
+            Region
+            <input name="region" defaultValue={region} placeholder="Stockholm" />
+          </label>
+          <label>
+            Company
+            <input name="company" defaultValue={company} placeholder="Volvo" />
+          </label>
+          <button type="submit">Apply Filters</button>
+        </form>
+      </section>
+
+      <section className="jobs-list">
+        {jobs.length === 0 ? (
+          <article className="job-card empty">
+            <h2>No jobs match your filter</h2>
+            <p>Try widening your search terms or run a fresh sync.</p>
+          </article>
+        ) : (
+          jobs.map((job) => (
+            <article key={job.id} className="job-card">
+              <header>
+                <p className="chip">{job.occupation ?? "Role"}</p>
+                <p>{job.region ?? "Region unknown"}</p>
+              </header>
+              <h2>{job.title}</h2>
+              <p className="company">{job.company}</p>
+              <p className="meta">
+                Published: {formatDate(job.publishedAt)} | Last day: {formatDate(job.lastPublicationAt)}
+              </p>
+              <p className="description">{job.description?.slice(0, 420) ?? "No description available."}</p>
+              {job.applyUrl ? (
+                <a href={job.applyUrl} target="_blank" rel="noopener noreferrer">
+                  Open listing
+                </a>
+              ) : null}
+            </article>
+          ))
+        )}
+      </section>
+    </main>
   );
 }
