@@ -6,7 +6,7 @@ This project lets you:
 
 - Keep a private, single-user login-protected dashboard
 - Sync jobs from Arbetsformedlingen (Jobtech API)
-- Run automatic syncing with Vercel Cron
+- Run automatic syncing with GitHub Actions
 - Search and filter jobs in your own UI
 
 ## Stack
@@ -14,7 +14,7 @@ This project lets you:
 - Next.js (App Router)
 - Prisma ORM
 - Supabase PostgreSQL
-- Vercel Cron
+- GitHub Actions
 
 ## 1) Install dependencies
 
@@ -88,14 +88,20 @@ npm run dev
 
 Open http://localhost:3000 and log in with `APP_LOGIN_PASSWORD`.
 
-## 5) Set up Vercel Cron
+## 5) Set up automatic sync without Vercel Cron
 
-This repo includes `vercel.json` with:
+This repo uses GitHub Actions for scheduled syncs.
 
-- Path: `/api/cron/sync-jobs`
-- Schedule: every 6 hours (`0 */6 * * *`)
+Add these GitHub repository secrets:
 
-In Vercel project settings, add `CRON_SECRET` with the same value as your runtime environment. Vercel sends this as:
+- `SITE_URL`: your deployed site URL, for example `https://your-project.vercel.app`
+- `CRON_SECRET`: same value as your app environment variable
+
+The workflow runs every 6 hours and calls:
+
+`GET /api/cron/sync-jobs`
+
+with this header:
 
 `Authorization: Bearer <CRON_SECRET>`
 
@@ -105,6 +111,10 @@ In Vercel project settings, add `CRON_SECRET` with the same value as your runtim
 - `POST /api/auth/logout`: clears dashboard session
 - `GET /api/cron/sync-jobs`: cron-protected job sync
 - `POST /api/jobs/sync`: manual sync button from UI
+
+## GitHub Actions workflow
+
+The scheduled workflow lives in [`.github/workflows/sync-jobs.yml`](.github/workflows/sync-jobs.yml).
 
 ## Useful scripts
 
